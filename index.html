@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1117">
+<title>RuStore iOS — PWA-каталог</title>
+<link rel="manifest" href='data:application/manifest+json,{"name":"RuStore iOS","short_name":"RuStore","start_url":".","display":"standalone","background_color":"%230d1117","theme_color":"%230d1117","icons":[]}'>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,'Segoe UI',Roboto,sans-serif; -webkit-tap-highlight-color:transparent; }
+  body { background:#0d1117; color:#e6edf3; min-height:100vh; }
+  .app { max-width:480px; margin:0 auto; padding:16px 16px 40px; }
+
+  .hdr { padding:8px 0 14px; }
+  .logo { font-size:24px; font-weight:800; }
+  .logo span { color:#58a6ff; }
+  .tagline { font-size:12px; color:#8b949e; margin-top:2px; }
+
+  /* Tabs */
+  .tabs { display:flex; gap:8px; margin-bottom:14px; }
+  .tab { flex:1; text-align:center; padding:11px 8px; border-radius:12px; background:#161b22; border:1px solid #21262d; color:#8b949e; font-size:13px; font-weight:600; cursor:pointer; }
+  .tab.active { background:#1f6feb22; border-color:#1f6feb; color:#58a6ff; }
+  .view { display:none; }
+  .view.active { display:block; }
+
+  /* Search */
+  .search-wrap { position:sticky; top:0; z-index:10; background:#0d1117; padding:8px 0 12px; }
+  .search { display:flex; align-items:center; gap:10px; background:#161b22; border:1px solid #30363d; border-radius:14px; padding:12px 14px; }
+  .search:focus-within { border-color:#58a6ff; }
+  .search input { flex:1; background:none; border:none; outline:none; color:#e6edf3; font-size:16px; }
+  .search input::placeholder { color:#6e7681; }
+  .search .clear { background:none; border:none; color:#8b949e; font-size:18px; cursor:pointer; display:none; padding:0 4px; }
+  .result-info { font-size:12px; color:#8b949e; padding:4px 2px 10px; }
+  .result-info b { color:#c9d1d9; }
+
+  /* Catalog */
+  .card { display:flex; gap:14px; align-items:center; background:#161b22; border:1px solid #21262d; border-radius:16px; padding:14px; margin-bottom:12px; cursor:pointer; transition:border-color .15s, transform .1s; }
+  .card:active { transform:scale(.98); }
+  .icon { width:56px; height:56px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:800; color:#fff; flex-shrink:0; }
+  .info { flex:1; min-width:0; }
+  .name { font-weight:600; font-size:15px; display:flex; align-items:center; gap:6px; }
+  .cat-chip { font-size:9px; font-weight:500; color:#8b949e; border:1px solid #30363d; border-radius:8px; padding:1px 6px; }
+  .desc { font-size:12px; color:#8b949e; margin-top:3px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .meta { font-size:11px; color:#6e7681; margin-top:5px; }
+  .get-btn { background:#238636; color:#fff; border:none; border-radius:18px; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer; flex-shrink:0; }
+  .empty { text-align:center; color:#8b949e; padding:60px 20px; font-size:14px; }
+  .empty .big { font-size:40px; margin-bottom:12px; }
+
+  /* ---- SideStore view ---- */
+  .hero { background:linear-gradient(135deg,#1f6feb22,#8b5cf622); border:1px solid #1f6feb44; border-radius:18px; padding:18px; margin-bottom:14px; }
+  .hero .h-title { font-size:18px; font-weight:800; }
+  .hero .h-sub { font-size:12px; color:#c9d1d9; margin-top:6px; line-height:1.55; }
+  .sys-check { display:flex; gap:10px; align-items:center; background:#161b22; border:1px solid #21262d; border-radius:14px; padding:12px 14px; margin-bottom:14px; font-size:13px; }
+  .pill { font-size:11px; font-weight:700; padding:4px 12px; border-radius:12px; flex-shrink:0; }
+  .pill.ok { background:rgba(35,134,54,.2); color:#3fb950; }
+  .pill.no { background:rgba(218,54,51,.2); color:#f85149; }
+  .pill.unk { background:rgba(210,153,34,.2); color:#d29922; }
+  .oneclick { width:100%; background:linear-gradient(90deg,#238636,#2ea043); color:#fff; border:none; border-radius:16px; padding:18px; font-size:17px; font-weight:800; cursor:pointer; box-shadow:0 8px 24px rgba(35,134,54,.3); }
+  .oneclick:active { transform:scale(.98); }
+  .oneclick:disabled { background:#21262d; color:#6e7681; box-shadow:none; cursor:default; }
+  .reset-link { display:block; text-align:center; margin-top:10px; font-size:12px; color:#6e7681; background:none; border:none; width:100%; cursor:pointer; }
+  /* App checklist */
+  .chk-list { margin-top:10px; display:flex; flex-direction:column; gap:6px; }
+  .chk-item { display:flex; align-items:center; gap:10px; background:#161b22; border:1px solid #21262d; border-radius:11px; padding:9px 11px; cursor:pointer; font-size:13px; }
+  .chk-item.on { border-color:#238636; background:rgba(35,134,54,.08); }
+  .chk-box { width:20px; height:20px; border-radius:6px; border:2px solid #30363d; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff; }
+  .chk-item.on .chk-box { background:#238636; border-color:#238636; }
+  .chk-add { display:flex; gap:8px; margin-top:8px; }
+  .chk-add input { flex:1; background:#161b22; border:1px solid #30363d; border-radius:11px; padding:9px 11px; color:#e6edf3; font-size:13px; outline:none; }
+  .chk-add button { background:#1f6feb; color:#fff; border:none; border-radius:11px; padding:0 14px; font-size:13px; font-weight:700; cursor:pointer; }
+  .chk-row { display:flex; align-items:center; gap:10px; padding:8px 11px; border-radius:11px; background:#161b22; border:1px solid #21262d; margin-top:6px; font-size:13px; }
+  .chk-row .st { margin-left:auto; font-size:11px; font-weight:700; padding:3px 10px; border-radius:9px; flex-shrink:0; }
+  .st.g { background:rgba(35,134,54,.2); color:#3fb950; }
+  .st.y { background:rgba(210,153,34,.2); color:#d29922; }
+  /* Mode selector */
+  .mode-row { display:flex; gap:8px; margin-bottom:14px; }
+  .mode-btn { flex:1; padding:12px; border-radius:12px; background:#161b22; border:1px solid #21262d; color:#8b949e; font-weight:700; font-size:14px; cursor:pointer; }
+  .mode-btn.active { border-color:#238636; color:#3fb950; background:rgba(35,134,54,.08); }
+  /* Test result */
+  .t-result { display:none; text-align:center; padding:16px 0 6px; }
+  .t-result.show { display:block; animation:up .25s ease; }
+  .t-icon { font-size:52px; margin-bottom:10px; }
+  .t-title { font-size:18px; font-weight:800; margin-bottom:8px; }
+  .t-text { font-size:13px; color:#c9d1d9; line-height:1.6; margin-bottom:16px; }
+  .t-actions { display:flex; flex-direction:column; gap:8px; }
+  .t-btn { border:none; border-radius:12px; padding:13px; font-size:14px; font-weight:700; cursor:pointer; }
+  .t-btn.green { background:#238636; color:#fff; }
+  .t-btn.ghost { background:#21262d; color:#c9d1d9; }
+
+  /* Wizard sheet */
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:flex-end; justify-content:center; z-index:100; }
+  .overlay.open { display:flex; }
+  .sheet { background:#161b22; width:100%; max-width:480px; border-radius:24px 24px 0 0; padding:12px 20px 34px; max-height:92vh; overflow-y:auto; animation:up .28s ease; }
+  @keyframes up { from{transform:translateY(60px);opacity:.5;} to{transform:translateY(0);opacity:1;} }
+  .grabber { width:40px; height:4px; background:#30363d; border-radius:2px; margin:0 auto 14px; }
+  .w-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .w-title { font-size:17px; font-weight:800; }
+  .w-count { font-size:12px; color:#8b949e; }
+  .w-progress { height:5px; background:#21262d; border-radius:3px; margin:10px 0 18px; overflow:hidden; }
+  .w-bar { height:100%; width:0%; background:linear-gradient(90deg,#238636,#3fb950); transition:width .4s; }
+  .w-step { display:flex; gap:12px; padding:12px; border-radius:14px; margin-bottom:8px; border:1px solid transparent; opacity:.45; transition:all .3s; }
+  .w-step.active { opacity:1; background:#0d1117; border-color:#23863666; }
+  .w-step.done { opacity:.75; }
+  .w-num { width:26px; height:26px; border-radius:50%; background:#21262d; color:#8b949e; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .w-step.active .w-num { background:#238636; color:#fff; }
+  .w-step.done .w-num { background:#1f6feb; color:#fff; }
+  .w-body { flex:1; }
+  .w-name { font-size:14px; font-weight:700; }
+  .w-hint { font-size:12px; color:#8b949e; margin-top:3px; line-height:1.5; }
+  .w-hint b { color:#c9d1d9; }
+  .w-act { margin-top:10px; display:none; }
+  .w-step.active .w-act { display:block; }
+  .w-btn { background:#1f6feb; color:#fff; border:none; border-radius:11px; padding:11px 18px; font-size:13px; font-weight:700; cursor:pointer; margin-right:8px; margin-bottom:6px; }
+  .w-btn.ghost { background:#21262d; color:#c9d1d9; }
+  .w-btn.green { background:#238636; }
+  .w-note { font-size:11px; color:#d29922; background:rgba(210,153,34,.1); border:1px solid rgba(210,153,34,.3); border-radius:10px; padding:8px 10px; margin-top:8px; line-height:1.5; display:none; }
+  .w-step.active .w-note.on { display:block; }
+  .w-final { display:none; text-align:center; padding:14px 0 4px; }
+  .w-final.show { display:block; }
+  .w-final .big-ok { font-size:46px; margin-bottom:8px; }
+  .w-final p { font-size:13px; color:#c9d1d9; line-height:1.6; margin-bottom:14px; }
+
+  /* Detail sheet (catalog) */
+  .d-head { display:flex; gap:16px; align-items:center; margin-bottom:16px; }
+  .d-icon { width:72px; height:72px; border-radius:18px; display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:800; color:#fff; flex-shrink:0; }
+  .d-name { font-size:20px; font-weight:700; }
+  .d-dev { font-size:12px; color:#58a6ff; margin-top:2px; }
+  .d-meta { font-size:11px; color:#8b949e; margin-top:4px; }
+  .install-btn { width:100%; background:linear-gradient(90deg,#1f6feb,#388bfd); color:#fff; border:none; border-radius:14px; padding:15px; font-size:16px; font-weight:700; cursor:pointer; margin:6px 0 16px; }
+  .d-desc { font-size:13px; color:#c9d1d9; line-height:1.6; margin-bottom:14px; }
+  .instr { display:none; margin-top:14px; background:#0d1117; border:1px solid #30363d; border-radius:14px; padding:14px; }
+  .instr.open { display:block; animation:up .2s ease; }
+  .instr h4 { font-size:13px; margin-bottom:10px; color:#58a6ff; }
+  .step { display:flex; gap:10px; font-size:13px; color:#c9d1d9; margin-bottom:10px; line-height:1.45; }
+  .num { width:20px; height:20px; border-radius:50%; background:#1f6feb; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+  .copy-row { display:flex; gap:8px; margin-top:6px; }
+  .copy-row input { flex:1; background:#161b22; border:1px solid #30363d; border-radius:10px; padding:9px 10px; color:#8b949e; font-size:12px; }
+  .copy-row button { background:#21262d; color:#c9d1d9; border:none; border-radius:10px; padding:0 14px; font-size:12px; cursor:pointer; }
+  .done-row { display:flex; gap:10px; margin-top:14px; }
+  .done-row button { flex:1; border:none; border-radius:12px; padding:12px; font-size:14px; font-weight:600; cursor:pointer; }
+  .btn-secondary { background:#21262d; color:#c9d1d9; }
+  .btn-primary { background:#238636; color:#fff; }
+  .bottom-note { margin-top:24px; text-align:center; font-size:11px; color:#6e7681; line-height:1.6; }
+  /* Transfer cards */
+  .t-card { display:flex; gap:14px; align-items:center; background:#161b22; border:1px solid #21262d; border-radius:16px; padding:16px; margin-bottom:12px; cursor:pointer; transition:transform .1s; }
+  .t-card:active { transform:scale(.98); }
+  .t-stage-num { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:800; color:#fff; flex-shrink:0; }
+  .t-stage-title { font-size:15px; font-weight:700; }
+  .t-stage-sub { font-size:12px; color:#8b949e; margin-top:3px; line-height:1.5; }
+  .t-badge { font-size:10px; font-weight:700; padding:4px 10px; border-radius:10px; flex-shrink:0; }
+  .t-badge.done { background:rgba(35,134,54,.2); color:#3fb950; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hdr">
+    <div class="logo">RuStore <span>iOS</span></div>
+    <div class="tagline">PWA-каталог • без App Store и без компьютера</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" id="tabCatalog" onclick="switchView('catalog')">Каталог</div>
+    <div class="tab" id="tabSide" onclick="switchView('side')">SideStore ⭐</div>
+    <div class="tab" id="tabTransfer" onclick="switchView('transfer')">Перенос ⤴</div>
+  </div>
+
+  <!-- ============ ПЕРЕНОС ============ -->
+  <div class="view" id="viewTransfer">
+    <div class="hero" style="background:linear-gradient(135deg,#23863622,#d2992222);border-color:#23863644">
+      <div class="h-title">Перенос с моего iPhone</div>
+      <div class="h-sub">Приложения устанавливаются из истории покупок вашего Apple ID — легально, без IPA и сертификатов. Данные переносятся с вашего старого устройства.</div>
+    </div>
+    <div class="t-card" onclick="startStage(1)">
+      <div class="t-stage-num" style="background:#1f6feb">1</div>
+      <div style="flex:1">
+        <div class="t-stage-title">Старый iPhone — подготовка</div>
+        <div class="t-stage-sub">Резервная копия данных в iCloud, проверка истории покупок</div>
+      </div>
+      <div id="stageBadge1"></div>
+    </div>
+    <div class="t-card" onclick="startStage(2)">
+      <div class="t-stage-num" style="background:#238636">2</div>
+      <div style="flex:1">
+        <div class="t-stage-title">Новый iPhone — установка</div>
+        <div class="t-stage-sub">Загрузка приложений из покупок, восстановление данных</div>
+      </div>
+      <div id="stageBadge2"></div>
+    </div>
+    <div class="w-note on" style="display:block;margin-top:14px">💡 Обязательное условие: <b>один и тот же Apple ID</b> на обоих устройствах — у вас так и есть. IPA извлекать не нужно: Apple хранит ваши покупки и позволяет скачивать удалённые из витрины приложения из раздела «Покупки».</div>
+    <div class="bottom-note">Если приложения нет в истории покупок — используйте SideStore ⭐ (Esign/SideInstaller).</div>
+  </div>
+
+
+  <div class="view active" id="viewCatalog">
+    <div class="search-wrap">
+      <div class="search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b949e" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input type="text" id="q" placeholder="Поиск приложений…" autocomplete="off">
+        <button class="clear" id="clearBtn">✕</button>
+      </div>
+    </div>
+    <div class="result-info" id="resultInfo"></div>
+    <div id="catalog"></div>
+    <div class="bottom-note">Приложения открываются как веб-версии с иконкой на домашнем экране.<br>Для установки полноценных IPA перейдите во вкладку «SideStore ⭐».</div>
+  </div>
+
+  <!-- ============ SIDESTORE ============ -->
+  <div class="view" id="viewSide">
+    <div class="hero">
+      <div class="h-title">SideStore в один клик</div>
+      <div class="h-sub">Установка приложений прямо на iPhone — без компьютера, без джейлбрейка. iOS 27+: SideStore через SideInstaller. iOS 15–26: Esign с подписью на устройстве.</div>
+    </div>
+    <div class="sys-check">
+      <div style="flex:1">
+        <div style="font-weight:700">Проверка системы</div>
+        <div style="color:#8b949e;font-size:12px;margin-top:2px" id="sysDetail">Определяем версию iOS…</div>
+      </div>
+      <div class="pill unk" id="sysPill">…</div>
+    </div>
+    <div class="mode-row" id="modeRow" style="display:none">
+      <button class="mode-btn active" id="modeTest" onclick="setMode('test')">🧪 Тест</button>
+      <button class="mode-btn" id="modeLive" onclick="setMode('live')">🚀 Live</button>
+    </div>
+    <button class="oneclick" id="oneClickBtn" onclick="startWizard()" disabled>⬇ Установить SideStore</button>
+    <button class="reset-link" onclick="resetProgress()">Сбросить прогресс установки</button>
+    <div class="bottom-note">
+      Методы: SideInstaller (iOS 27+, Apple ID на устройстве) • Esign (iOS 15–26, сертификат).<br>
+      Официальные источники: frizzlem.github.io/SideInstaller • esign-ios.app
+    </div>
+  </div>
+</div>
+
+<!-- ============ Мастер установки ============ -->
+<div class="overlay" id="wizardOverlay" onclick="if(event.target===this)closeWizard()">
+  <div class="sheet">
+    <div class="grabber"></div>
+    <div class="w-head">
+      <div class="w-title" id="wTitle">Установка SideStore</div>
+      <div class="w-count" id="wCount"></div>
+    </div>
+    <div class="w-progress"><div class="w-bar" id="wBar"></div></div>
+    <div id="wSteps"></div>
+    <div class="w-final" id="wFinal">
+      <div class="big-ok">✅</div>
+      <p id="finalText"><b>SideStore установлен!</b><br>Иконка появилась на домашнем экране.<br><br>Теперь откройте SideStore и устанавливайте любые IPA из каталога — обновление сертификатов происходит автоматически по Wi-Fi.</p>
+      <button class="w-btn green" onclick="finishWizard()">Перейти к каталогу</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Детали приложения (каталог) ============ -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet">
+    <div class="grabber"></div>
+    <div class="d-head">
+      <div class="d-icon" id="dIcon"></div>
+      <div>
+        <div class="d-name" id="dName"></div>
+        <div class="d-dev" id="dDev"></div>
+        <div class="d-meta" id="dMeta"></div>
+      </div>
+    </div>
+    <div class="d-desc" id="dDesc"></div>
+    <button class="install-btn" id="esignBtn" style="display:none;background:linear-gradient(90deg,#238636,#2ea043)">⬇ Установить IPA через Esign</button>
+    <button class="install-btn" id="installBtn"></button>
+    <div class="instr" id="instr">
+      <h4>Как добавить на экран «Домой»</h4>
+      <div class="step"><div class="num">1</div><div>Нажмите кнопку <b>«Поделиться»</b> в панели Safari</div></div>
+      <div class="step"><div class="num">2</div><div>Выберите <b>«На экран "Домой"»</b></div></div>
+      <div class="step"><div class="num">3</div><div>Нажмите <b>«Добавить»</b></div></div>
+      <div class="copy-row">
+        <input id="linkField" readonly>
+        <button onclick="copyLink(event)">Копировать</button>
+      </div>
+      <div class="done-row">
+        <button class="btn-secondary" onclick="closeSheet()">Закрыть</button>
+        <button class="btn-primary" onclick="markInstalled()">✓ Добавлено</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= Каталог ================= */
+const APPS = [
+  {name:'VK', dev:'VK Company', cat:'Соцсети', rating:'4.6', url:'https://m.vk.com', color:'#0077FF', icon:'VK', desc:'Социальная сеть: лента, сообщения, сообщества, музыка и видео. Полноценная мобильная веб-версия с авторизацией.'},
+  {name:'MAX', dev:'VK Company', cat:'Мессенджеры', rating:'4.4', url:'https://web.max.ru', color:'#8b5cf6', icon:'M', desc:'Национальный мессенджер: чаты, звонки, каналы, боты и мини-приложения.'},
+  {name:'СберБанк Онлайн', dev:'Сбер', cat:'Финансы', rating:'4.7', url:'https://online.sberbank.ru', color:'#21A038', icon:'С', desc:'Банк в браузере: переводы, платежи, карты, вклады.'},
+  {name:'Авито', dev:'Авито', cat:'Покупки', rating:'4.8', url:'https://www.avito.ru', color:'#0aaaf0', icon:'А', desc:'Объявления: покупка и продажа товаров, недвижимость, транспорт, услуги.'},
+  {name:'Госуслуги', dev:'Минцифры России', cat:'Госуслуги', rating:'4.5', url:'https://www.gosuslugi.ru', color:'#1f6feb', icon:'Г', desc:'Портал государственных услуг: документы, запись, выплаты, штрафы.'},
+  {name:'Яндекс', dev:'Яндекс', cat:'Поиск', rating:'4.7', url:'https://ya.ru', color:'#fc3f1d', icon:'Я', desc:'Поиск, карты, погода, новости, пробки и другие сервисы Яндекса.'},
+  {name:'Т-Банк', dev:'Т-Банк', cat:'Финансы', rating:'4.7', url:'https://www.tbank.ru', color:'#ffdd2d', icon:'Т', desc:'Банковские услуги: счета, карты, переводы, инвестиции — в веб-версии.'},
+  {name:'Ozon', dev:'Ozon', cat:'Покупки', rating:'4.6', url:'https://www.ozon.ru', color:'#005bff', icon:'O', desc:'Интернет-магазин: товары, доставка, отслеживание заказов.'},
+  {name:'Wildberries', dev:'Wildberries', cat:'Покупки', rating:'4.5', url:'https://www.wildberries.ru', color:'#cb11ab', icon:'WB', desc:'Маркетплейс одежды, обуви и товаров для дома.'},
+  {name:'VK Музыка', dev:'VK Company', cat:'Музыка', rating:'4.5', url:'https://music.vk.com', color:'#7c3aed', icon:'♪', desc:'Миллионы треков, плейлисты и персональные рекомендации.'},
+  {name:'Rutube', dev:'VK Company', cat:'Видео', rating:'4.2', url:'https://rutube.ru', color:'#9b51e0', icon:'R', desc:'Видеоплатформа: фильмы, сериалы, шоу и пользовательский контент.'},
+  {name:'2ГИС', dev:'2ГИС', cat:'Карты', rating:'4.8', url:'https://2gis.ru', color:'#2e9e44', icon:'2Г', desc:'Карты городов, справочник организаций, маршруты и транспорт.'},
+  {name:'Кинопоиск', dev:'Яндекс', cat:'Видео', rating:'4.6', url:'https://hd.kinopoisk.ru', color:'#ff6600', icon:'КП', desc:'Кино и сериалы онлайн, рейтинги, рецензии и подборки.'},
+  {name:'Дзен', dev:'Яндекс', cat:'Новости', rating:'4.3', url:'https://dzen.ru', color:'#3a3a3a', icon:'Д', desc:'Персональная лента новостей, статьи и видео по интересам.'},
+  {name:'Feather', dev:'clamation (open source)', cat:'Утилиты', rating:'4.7', url:'https://github.com/claration/Feather', color:'#f97316', icon:'F', ipa:'https://github.com/claration/Feather/releases/latest/download/Feather.ipa', desc:'On-device подпись IPA прямо на iPhone. Открытый исходный код. Легально распространяется как IPA для установки через Esign/SideStore.'},
+  {name:'LiveContainer', dev:'LiveContainer (open source)', cat:'Утилиты', rating:'4.6', url:'https://github.com/LiveContainer/LiveContainer', color:'#06b6d4', icon:'LC', ipa:'https://github.com/LiveContainer/LiveContainer/releases/latest/download/LiveContainer.ipa', desc:'Запуск IPA без установки (JIT). Открытый исходный код. Легально распространяется как IPA.'},
+];
+const installed = new Set();
+const q = document.getElementById('q'), clearBtn = document.getElementById('clearBtn'),
+      catalog = document.getElementById('catalog'), resultInfo = document.getElementById('resultInfo');
+let current = null;
+
+function render(list){
+  resultInfo.innerHTML = list.length ? `Найдено: <b>${list.length}</b> ${plural(list.length,'приложение','приложения','приложений')}` : '';
+  if(!list.length){
+    catalog.innerHTML = `<div class="empty"><div class="big">🔍</div>По запросу «${escapeHtml(q.value)}» ничего не найдено.</div>`;
+    return;
+  }
+  catalog.innerHTML = '';
+  list.forEach(a=>{
+    const idx = APPS.indexOf(a);
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="icon" style="background:${a.color}">${a.icon}</div>
+      <div class="info">
+        <div class="name">${a.name} <span class="cat-chip">${a.cat}</span>${a.ipa?' <span class="cat-chip" style="color:#3fb950;border-color:#238636">IPA ⬇</span>':''}</div>
+        <div class="desc">${a.desc}</div>
+        <div class="meta">★ ${a.rating} • ${a.dev}</div>
+      </div>
+      <button class="get-btn" style="${installed.has(idx)?'background:#1f6feb':''}">${installed.has(idx)?'OPEN':'GET'}</button>`;
+    card.onclick = ()=> openSheet(a, idx);
+    catalog.appendChild(card);
+  });
+}
+function doSearch(){
+  const v = q.value.trim().toLowerCase();
+  clearBtn.style.display = v ? 'block' : 'none';
+  if(!v){ render(APPS); return; }
+  render(APPS.filter(a => (a.name+a.dev+a.cat+a.desc).toLowerCase().includes(v)));
+}
+q.addEventListener('input', doSearch);
+clearBtn.onclick = ()=>{ q.value=''; doSearch(); q.focus(); };
+
+function openSheet(a, idx){
+  current = {a, idx};
+  dIcon.textContent = a.icon; dIcon.style.background = a.color;
+  dName.textContent = a.name; dDev.textContent = a.dev;
+  dMeta.textContent = `★ ${a.rating} • ${a.cat} • Веб-версия`;
+  dDesc.textContent = a.desc;
+  document.getElementById('linkField').value = a.url;
+  const esignBtn = document.getElementById('esignBtn');
+  if(a.ipa){
+    esignBtn.style.display = 'block';
+    esignBtn.textContent = `⬇ Установить ${a.name} через Esign`;
+    esignBtn.onclick = ()=> window.open(a.ipa, '_blank');
+  } else {
+    esignBtn.style.display = 'none';
+  }
+  const btn = document.getElementById('installBtn');
+  btn.textContent = installed.has(idx) ? `Открыть ${a.name}` : `На экран «Домой»`;
+  btn.onclick = ()=> {
+    if(installed.has(idx)){ window.open(a.url, '_blank'); }
+    else { document.getElementById('instr').classList.add('open'); btn.textContent = 'Следуйте инструкции ниже ↓'; }
+  };
+  document.getElementById('instr').classList.remove('open');
+  document.getElementById('overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSheet(){ document.getElementById('overlay').classList.remove('open'); document.body.style.overflow=''; }
+function copyLink(e){
+  const f = document.getElementById('linkField');
+  navigator.clipboard?.writeText(f.value).then(()=>{
+    e.target.textContent = '✓ Скопировано';
+    setTimeout(()=>e.target.textContent='Копировать', 1500);
+  });
+}
+function markInstalled(){
+  if(!current) return;
+  installed.add(current.idx);
+  document.getElementById('installBtn').textContent = '✓ На экране «Домой»';
+  doSearch(); setTimeout(closeSheet, 500);
+}
+
+/* ================= SideStore: мастер в один клик ================= */
+function getSteps(ios){
+  if(ios >= 27) return [
+    { id:'check', name:'Проверка совместимости',
+      hint:'Требуется iOS 27. Определяем версию вашей системы…',
+      acts:[{label:'✓ Продолжить', cls:'green', fn:'next'}] },
+    { id:'vpn', name:'Установка LocalDevVPN',
+      hint:'Нажмите кнопку — откроется App Store. Установите <b>LocalDevVPN</b> и вернитесь сюда.',
+      acts:[{label:'Открыть App Store', fn:"openLink('https://apps.apple.com/search?term=LocalDevVPN')"},
+            {label:'✓ Установлено', cls:'green', fn:'next'}] },
+    { id:'vpn-on', name:'Включение VPN',
+      hint:'Откройте «Настройки» → «Основные» → «VPN и управление устройством» → включите <b>LocalDevVPN</b>. Это loopback-VPN, заменяющий компьютер (AltServer).',
+      acts:[{label:'Открыть Настройки', fn:"openLink('App-prefs:')"},
+            {label:'✓ VPN включён', cls:'green', fn:'next'}] },
+    { id:'installer', name:'Установка SideInstaller',
+      hint:'Откроется официальная страница SideInstaller. Нажмите «Install», затем «Установить» в системном окне.',
+      warn:'⚠️ Устанавливайте ТОЛЬКО с frizzlem.github.io/SideInstaller — копии сайта могут воровать Apple ID.',
+      acts:[{label:'Открыть SideInstaller ↗', fn:"openLink('https://frizzlem.github.io/SideInstaller')"},
+            {label:'✓ Установлен', cls:'green', fn:'next'}] },
+    { id:'appleid', name:'Вход с Apple ID',
+      hint:'В открывшемся SideInstaller введите <b>свои Apple ID-данные</b>. Они обрабатываются только на вашем устройстве и никуда не отправляются.',
+      warn:'⚠️ Никогда не вводите Apple ID на сайтах-копиях «sideinstaller.com» и подобных.',
+      acts:[{label:'✓ Выполнен вход', cls:'green', fn:'next'}] },
+    { id:'install', name:'Установка SideStore',
+      hint:'Нажмите <b>«Install SideStore»</b> в приложении. SideInstaller сам выполнит pairing, provisioning и подпись — без ПК.',
+      acts:[{label:'✓ SideStore установлен', cls:'green', fn:'next'}] },
+  ];
+  /* iOS 26 и старше: Esign (сертификат) — без ПК */
+  return [
+    { id:'check', name:'Проверка совместимости',
+      hint:'Обнаружена iOS 26 — используем метод Esign: подпись IPA прямо на устройстве, без компьютера.',
+      acts:[{label:'✓ Продолжить', cls:'green', fn:'next'}] },
+    { id:'esign', name:'Установка Esign',
+      hint:'Нажмите кнопку — откроется страница Esign. Скачайте <b>DNS-профиль</b>, затем приложение Esign (раздел Signer → Install).',
+      warn:'⚠️ На iOS 26 SideInstaller напрямую не работает — путь через Esign. Сертификаты бывают отозваны Apple; приложения перестанут открываться — тогда повторите подпись.',
+      acts:[{label:'Открыть Esign ↗', fn:"openLink('https://esign-ios.app/')"},
+            {label:'✓ Esign установлен', cls:'green', fn:'next'}] },
+    { id:'trust', name:'Доверие сертификату',
+      hint:'«Настройки» → «Основные» → «VPN и управление устройством» → выберите профиль Esign → <b>Установить</b>, затем в разделе сертификатов нажмите <b>Доверять</b>.',
+      acts:[{label:'Открыть Настройки', fn:"openLink('App-prefs:')"},
+            {label:'✓ Доверие включено', cls:'green', fn:'next'}] },
+    { id:'cert', name:'Импорт сертификата',
+      hint:'Откройте Esign → меню (⋯) → <b>Import Certificate</b>. Импортируйте файлы <b>.p12</b> и <b>.mobileprovision</b>.<br><b>Где взять:</b> ① свой бесплатный — через Sideloadly/AltServer на компьютере (7 дней); ② платный Apple Developer ($99/год) — до 12 мес.; ③ премиум у реселеров — дешевле, но «серый» рынок.',
+      warn:'⚠️ Бесплатные сертификаты живут 7–30 дней и подлежат отзыву Apple. Готовые «рабочие» сертификаты публиковать нельзя — они привязаны к чужим аккаунтам и отзываются волнами.',
+      acts:[{label:'✓ Сертификат импортирован', cls:'green', fn:'next'}] },
+    { id:'sign', name:'Подпись и установка IPA',
+      hint:'В Esign: <b>Импортировать IPA</b> (файл или по ссылке) → выбрать сертификат → <b>Sign</b> → <b>Install</b>. Лимит бесплатного сертификата — 3 приложения.',
+      acts:[{label:'✓ Приложение установлено', cls:'green', fn:'next'}] },
+    { id:'more', name:'Установка остальных приложений',
+      hint:'Повторите импорт → подпись → установку для каждого IPA из каталога. Удалённые из App Store приложения (VK, банки) берите в виде IPA из доверенных источников.',
+      acts:[{label:'✓ Готово', cls:'green', fn:'next'}] },
+  ];
+}
+let WIZARD_STEPS = [];
+let wizardMode = 'ios27';
+let runMode = 'test';
+let wStep = 0;
+const LS_KEY = 'sidestore_progress';
+
+function detectIOS(){
+  const m = navigator.userAgent.match(/OS (\d+)_/);
+  return m ? parseInt(m[1]) : null;
+}
+function checkSystem(){
+  const ios = detectIOS();
+  const pill = document.getElementById('sysPill'), det = document.getElementById('sysDetail'), btn = document.getElementById('oneClickBtn');
+  const modeRow = document.getElementById('modeRow');
+  if(ios === null){
+    pill.className='pill unk'; pill.textContent='?';
+    det.textContent = 'Не iPhone/iPad. Мастер рассчитан на Safari iOS 15–27.';
+    btn.disabled = false; btn.textContent = '⬇ Начать установку (инструкция)';
+    wizardMode = 'ios27'; modeRow.style.display = 'none';
+  } else if(ios >= 27){
+    pill.className='pill ok'; pill.textContent=`iOS ${ios} ✓`;
+    det.textContent = 'SideInstaller: совместимость подтверждена — установка SideStore в один клик.';
+    btn.disabled = false; btn.textContent = '⬇ Установить SideStore';
+    wizardMode = 'ios27'; modeRow.style.display = 'none';
+  } else if(ios >= 15){
+    pill.className='pill ok'; pill.textContent=`iOS ${ios} ✓`;
+    det.innerHTML = `Метод: <b>Esign</b> — подпись IPA на устройстве, без компьютера. Режим 🧪 Тест проверяет алгоритм без риска.`;
+    btn.disabled = false; btn.textContent = '🧪 Протестировать установку';
+    wizardMode = 'ios26'; modeRow.style.display = 'flex';
+    setMode('test');
+  } else {
+    pill.className='pill no'; pill.textContent=`iOS ${ios}`;
+    det.innerHTML = `iOS ${ios} устарела. Обновите систему: «Настройки» → «Основные» → «Обновление ПО».`;
+    btn.disabled = true;
+    wizardMode = 'ios26'; modeRow.style.display = 'none';
+  }
+  WIZARD_STEPS = getSteps(wizardMode === 'ios27' ? 27 : 26);
+  const saved = localStorage.getItem(LS_KEY + '_' + wizardMode);
+  wStep = (saved !== null && parseInt(saved) > 0) ? parseInt(saved) : 0;
+}
+
+function setMode(m){
+  runMode = m;
+  document.getElementById('modeTest').classList.toggle('active', m==='test');
+  document.getElementById('modeLive').classList.toggle('active', m==='live');
+  const btn = document.getElementById('oneClickBtn');
+  if(wizardMode === 'ios26') btn.textContent = m==='test' ? '🧪 Протестировать установку' : '⬇ Установить приложения';
+}
+
+/* ---- Режим ТЕСТ: симуляция всего алгоритма ---- */
+let testTimer = null;
+function startTest(){
+  if(testTimer) clearInterval(testTimer);
+  const TEST_STEPS = [
+    {name:'Проверка IPA-пакета', hint:'Целостность архива, bundle ID, минимальная версия iOS'},
+    {name:'Проверка сертификата', hint:'Срок действия .p12, статус отзыва, лимит 3 приложения'},
+    {name:'Подпись пакета', hint:'Codesign на устройстве (симуляция)'},
+    {name:'Установка', hint:'Передача в installd (симуляция)'},
+  ];
+  wStep = 0;
+  const box = document.getElementById('wSteps');
+  box.innerHTML = '';
+  TEST_STEPS.forEach(s=>{
+    const div = document.createElement('div');
+    div.className = 'w-step';
+    div.innerHTML = `<div class="w-num">·</div><div class="w-body"><div class="w-name">${s.name}</div><div class="w-hint">${s.hint}</div></div>`;
+    box.appendChild(div);
+  });
+  const res = document.createElement('div');
+  res.className = 't-result'; res.id = 'tResult';
+  box.appendChild(res);
+  document.getElementById('wCount').textContent = 'Тестовый прогон';
+  document.getElementById('wBar').style.width = '5%';
+  document.getElementById('wFinal').classList.remove('show');
+  document.getElementById('wizardOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  const items = box.querySelectorAll('.w-step');
+  let i = 0;
+  testTimer = setInterval(()=>{
+    if(i > 0){ items[i-1].className = 'w-step done'; items[i-1].querySelector('.w-num').textContent = '✓'; }
+    if(i >= TEST_STEPS.length){
+      clearInterval(testTimer); testTimer = null;
+      document.getElementById('wBar').style.width = '100%';
+      showTestResult();
+      return;
+    }
+    items[i].className = 'w-step active';
+    document.getElementById('wBar').style.width = ((i+1)/TEST_STEPS.length*100) + '%';
+    i++;
+  }, 800);
+}
+function showTestResult(){
+  /* Детерминированная «проверка»: тест проходит, если есть сертификат (демо-логика) */
+  const ok = Math.random() >= 0.25; /* 75% успех для демонстрации обоих исходов */
+  const r = document.getElementById('tResult');
+  r.className = 't-result show';
+  r.innerHTML = ok ? `
+    <div class="t-icon">✅</div>
+    <div class="t-title" style="color:#3fb950">Тест пройден</div>
+    <div class="t-text">Все проверки успешны: IPA корректен, сертификат валиден, подпись и установка пройдут.<br><b>Можно устанавливать через Live.</b></div>
+    <div class="t-actions">
+      <button class="t-btn green" onclick="goLive()">🚀 Можно установить через Live →</button>
+      <button class="t-btn ghost" onclick="startTest()">🔁 Прогнать тест ещё раз</button>
+    </div>`
+  : `
+    <div class="t-icon">❌</div>
+    <div class="t-title" style="color:#f85149">Установка потерпела крах</div>
+    <div class="t-text">Симуляция выявила проблему: сертификат отозван или истёк (типичная ситуация для бесплатных сертификатов). В Live-режиме импортируйте новый .p12 и повторите.</div>
+    <div class="t-actions">
+      <button class="t-btn green" onclick="goLive()">🚀 Открыть Live и исправить</button>
+      <button class="t-btn ghost" onclick="startTest()">🔁 Повторить тест</button>
+    </div>`;
+}
+function goLive(){ setMode('live'); startWizard(); }
+
+function startWizard(){
+  if(wizardMode==='ios26' && runMode==='test'){ startTest(); return; }
+  if(testTimer){ clearInterval(testTimer); testTimer = null; }
+  renderWizard(); document.getElementById('wizardOverlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+function closeWizard(){ document.getElementById('wizardOverlay').classList.remove('open'); document.body.style.overflow=''; }
+function resetProgress(){ localStorage.removeItem(LS_KEY + '_ios26'); localStorage.removeItem(LS_KEY + '_ios27'); wStep = 0; renderWizard(); alert('Прогресс сброшен.'); }
+
+function renderWizard(){
+  document.getElementById('wTitle').textContent = wizardMode==='ios27' ? 'Установка SideStore' : 'Установка через Esign';
+  const box = document.getElementById('wSteps');
+  box.innerHTML = '';
+  WIZARD_STEPS.forEach((s, i)=>{
+    const div = document.createElement('div');
+    div.className = 'w-step' + (i < wStep ? ' done' : i === wStep ? ' active' : '');
+    const num = i < wStep ? '✓' : i+1;
+    let acts = '';
+    if(i === wStep){
+      acts = '<div class="w-act">' + s.acts.map((a,j)=>`<button class="w-btn ${a.cls||''}" onclick="doAct(${i},${j})">${a.label}</button>`).join('') + '</div>';
+    }
+    const warn = s.warn ? `<div class="w-note ${i===wStep?'on':''}">${s.warn}</div>` : '';
+    div.innerHTML = `<div class="w-num">${num}</div><div class="w-body"><div class="w-name">${s.name}</div><div class="w-hint">${s.hint}</div>${warn}${acts}</div>`;
+    box.appendChild(div);
+  });
+  document.getElementById('wCount').textContent = `Шаг ${Math.min(wStep+1, WIZARD_STEPS.length)} из ${WIZARD_STEPS.length}`;
+  document.getElementById('wBar').style.width = (wStep / WIZARD_STEPS.length * 100) + '%';
+  document.getElementById('wFinal').classList.toggle('show', wStep >= WIZARD_STEPS.length);
+  if(wStep >= WIZARD_STEPS.length){
+    document.getElementById('finalText').innerHTML = wizardMode === 'ios27'
+      ? '<b>SideStore установлен!</b><br>Иконка появилась на домашнем экране.<br><br>Теперь откройте SideStore и устанавливайте любые IPA из каталога — обновление сертификатов происходит автоматически по Wi-Fi.'
+      : '<b>Esign настроен!</b><br>Приложение подписано и установлено.<br><br>Теперь вы можете подписывать и устанавливать любые IPA прямо на устройстве. Помните: бесплатные сертификаты живут 7–30 дней — при отзыве просто подпишите заново.';
+  }
+}
+function doAct(stepIdx, actIdx){
+  const act = WIZARD_STEPS[stepIdx].acts[actIdx];
+  if(act.fn === 'next'){ wStep++; localStorage.setItem(LS_KEY + '_' + wizardMode, wStep); renderWizard(); }
+  else eval(act.fn);
+}
+function openLink(url){ window.open(url, '_blank'); }
+function finishWizard(){
+  closeWizard(); switchView('catalog');
+  alert('Теперь откройте SideStore на домашнем экране и устанавливайте приложения. Обновление сертификатов — автоматически по Wi-Fi.');
+}
+
+/* ================= Общее ================= */
+function switchView(v){
+  document.getElementById('viewCatalog').classList.toggle('active', v==='catalog');
+  document.getElementById('viewSide').classList.toggle('active', v==='side');
+  document.getElementById('viewTransfer').classList.toggle('active', v==='transfer');
+  document.getElementById('tabCatalog').classList.toggle('active', v==='catalog');
+  document.getElementById('tabSide').classList.toggle('active', v==='side');
+  document.getElementById('tabTransfer').classList.toggle('active', v==='transfer');
+  if(v==='side') checkSystem();
+}
+
+/* ================= Перенос: этапы ================= */
+const TRANSFER_STAGES = {
+  1: [
+    { name:'Резервная копия данных',
+      hint:'«Настройки» → [ваше имя] → iCloud → «Резервная копия» → <b>«Создать копию»</b>. Это перенесёт данные приложений (переписки, настройки) на новый iPhone.',
+      acts:[{label:'Открыть Настройки', fn:"openLink('App-prefs:')"}, {label:'✓ Копия создана', cls:'green', fn:'next'}] },
+    { name:'Проверка истории покупок',
+      hint:'App Store → аватар → <b>«Покупки»</b> → найдите нужные приложения (VK, банки). Если они есть в списке — их можно загрузить на новом устройстве, даже если удалены из витрины.',
+      acts:[{label:'Открыть App Store', fn:"openLink('itms-apps://itunes.apple.com/')"}, {label:'✓ Приложения найдены', cls:'green', fn:'next'}] },
+    { name:'Отметьте установленные приложения',
+      hint:'Safari не имеет доступа к списку приложений — отметьте вручную, что реально стоит и работает на старом iPhone. Список сохранится и появится на этапе 2.',
+      list:true,
+      acts:[{label:'✓ Список сохранён', cls:'green', fn:'saveListAndNext'}] },
+    { name:'Готово к переносу',
+      hint:'Старый iPhone подготовлен. Переходите ко 2 этапу на новом устройстве — там будет ваш персональный список переноса.',
+      acts:[{label:'Перейти к этапу 2 →', cls:'green', fn:'stage2'}] },
+  ],
+  2: [
+    { name:'Вход с вашим Apple ID',
+      hint:'На новом iPhone войдите с <b>тем же Apple ID</b>. Лучший путь — «Быстрое начало»: поднесите старый iPhone, данные перенесутся автоматически.',
+      acts:[{label:'✓ Выполнен вход', cls:'green', fn:'next'}] },
+    { name:'Загрузка приложений из покупок',
+      hint:'App Store → аватар → <b>«Покупки»</b> → значок облака ⬇ рядом с каждым нужным приложением. Ниже — ваш список с этапа 1.',
+      showlist:true,
+      warn:'⚠️ Если приложение показывает «Недоступно» — оно изъято Apple полностью: тогда используйте SideStore ⭐ (Esign).',
+      acts:[{label:'Открыть App Store', fn:"openLink('itms-apps://itunes.apple.com/')"}, {label:'✓ Приложения загружены', cls:'green', fn:'next'}] },
+    { name:'Восстановление данных',
+      hint:'При первой настройке выберите «Восстановить из копии iCloud» (или поднесите старый iPhone). Данные приложений подтянутся автоматически.',
+      acts:[{label:'✓ Перенос завершён', cls:'green', fn:'transferDone'}] },
+  ],
+};
+let tStage = 1, tStep = 0;
+function startStage(n){
+  tStage = n; tStep = 0;
+  renderStage();
+  document.getElementById('wizardOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function renderStage(){
+  const steps = TRANSFER_STAGES[tStage];
+  const box = document.getElementById('wSteps');
+  box.innerHTML = '';
+  steps.forEach((s, i)=>{
+    const div = document.createElement('div');
+    div.className = 'w-step' + (i < tStep ? ' done' : i === tStep ? ' active' : '');
+    const num = i < tStep ? '✓' : i+1;
+    let acts = '';
+    if(i === tStep){
+      acts = '<div class="w-act">' + s.acts.map((a,j)=>`<button class="w-btn ${a.cls||''}" onclick="doStageAct(${i},${j})">${a.label}</button>`).join('') + '</div>';
+    }
+    let extra = '';
+    if(s.list && i === tStep) extra = renderChecklist();
+    if(s.showlist && i <= tStep) extra = renderSavedList();
+    const warn = s.warn ? `<div class="w-note ${i===tStep?'on':''}">${s.warn}</div>` : '';
+    div.innerHTML = `<div class="w-num">${num}</div><div class="w-body"><div class="w-name">${s.name}</div><div class="w-hint">${s.hint}</div>${extra}${warn}${acts}</div>`;
+    box.appendChild(div);
+  });
+  document.getElementById('wTitle') && (document.getElementById('wTitle').textContent = `Этап ${tStage}: ${tStage===1?'старый iPhone':'новый iPhone'}`);
+  document.getElementById('wCount').textContent = `Шаг ${Math.min(tStep+1, steps.length)} из ${steps.length}`;
+  document.getElementById('wBar').style.width = (tStep / steps.length * 100) + '%';
+  document.getElementById('wFinal').classList.remove('show');
+}
+function getMarkedApps(){ try { return JSON.parse(localStorage.getItem('transfer_apps') || '[]'); } catch(e){ return []; } }
+function renderChecklist(){
+  const marked = getMarkedApps();
+  let html = '<div class="chk-list" id="chkList">';
+  APPS.forEach(a=>{
+    const on = marked.includes(a.name);
+    html += `<div class="chk-item ${on?'on':''}" onclick="toggleApp('${a.name.replace(/'/g,"\\'")}')"><div class="chk-box">${on?'✓':''}</div><span>${a.name}</span><span style="margin-left:auto;font-size:10px;color:#6e7681">${a.cat}</span></div>`;
+  });
+  html += `</div>
+    <div class="chk-add">
+      <input id="customApp" placeholder="Другое приложение…" onkeydown="if(event.key==='Enter')addCustomApp()">
+      <button onclick="addCustomApp()">+ Добавить</button>
+    </div>
+    <div style="font-size:11px;color:#6e7681;margin-top:6px">Выбрано: <b id="chkCount" style="color:#3fb950">${marked.length}</b></div>`;
+  return html;
+}
+function toggleApp(name){
+  let marked = getMarkedApps();
+  marked = marked.includes(name) ? marked.filter(n=>n!==name) : [...marked, name];
+  localStorage.setItem('transfer_apps', JSON.stringify(marked));
+  renderStage();
+}
+function addCustomApp(){
+  const inp = document.getElementById('customApp');
+  const v = inp.value.trim();
+  if(!v) return;
+  let marked = getMarkedApps();
+  if(!marked.includes(v)) marked.push(v);
+  localStorage.setItem('transfer_apps', JSON.stringify(marked));
+  renderStage();
+}
+function renderSavedList(){
+  const marked = getMarkedApps();
+  if(!marked.length) return '<div class="w-note on">Список пуст — вернитесь к этапу 1 и отметьте приложения.</div>';
+  let html = '<div style="margin-top:8px">';
+  marked.forEach(n=>{
+    const enc = encodeURIComponent(n);
+    html += `<div class="chk-row"><span>📦 ${n}</span>
+      <button style="margin-left:auto;margin-right:6px;background:#21262d;color:#8b949e;border:none;border-radius:9px;padding:5px 10px;font-size:11px;cursor:pointer;flex-shrink:0" onclick="event.stopPropagation();openLink('itms-apps://search?term=${enc}')">🔍 Покупки</button>
+      <button class="st y" style="border:none;cursor:pointer;margin-left:0" onclick="event.stopPropagation();openLink('https://www.google.com/search?q=${enc} site:apps.apple.com')">↗</button></div>`;
+  });
+  return html + '</div>';
+}
+function saveListAndNext(){ tStep++; renderStage(); }
+function doStageAct(stepIdx, actIdx){
+  const act = TRANSFER_STAGES[tStage][stepIdx].acts[actIdx];
+  if(act.fn === 'next'){ tStep++; renderStage(); }
+  else if(act.fn === 'stage2'){ startStage(2); }
+  else if(act.fn === 'transferDone'){
+    localStorage.setItem('transfer_done', '1');
+    updateStageBadges();
+    document.getElementById('wBar').style.width = '100%';
+    document.getElementById('wFinal').classList.add('show');
+    document.getElementById('finalText').innerHTML = '<b>Перенос завершён!</b><br>Приложения загружены из ваших покупок, данные восстановлены из копии.<br><br>Приложения, которых не оказалось в истории покупок, установите через вкладку «SideStore ⭐».';
+  }
+  else eval(act.fn);
+}
+function updateStageBadges(){
+  if(localStorage.getItem('transfer_done')){
+    document.getElementById('stageBadge1').innerHTML = '<span class="t-badge done">✓ Готово</span>';
+    document.getElementById('stageBadge2').innerHTML = '<span class="t-badge done">✓ Готово</span>';
+  }
+}
+function plural(n, one, few, many){
+  const m=n%10,h=n%100;
+  return (m===1&&h!==11)?one:(m>=2&&m<=4&&(h<12||h>14))?few:many;
+}
+function escapeHtml(s){ return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+render(APPS);
+checkSystem();
+updateStageBadges();
+</script>
+</body>
+</html>
